@@ -9,6 +9,11 @@ SDL_Renderer* renderer = NULL;
 int isGameRunning = FALSE;
 int ticksLastFrame;
 
+Uint32* colorBuffer = NULL;
+SDL_Texture* colorBufferTexture;
+Uint32* wallTexture = NULL;
+
+
 const int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ,1, 1, 1, 1, 1, 1, 1},
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
@@ -81,12 +86,14 @@ int initializeWindow() {
 
 /*Quits the game window*/
 void destroyWindow() {
+    free(colorBuffer);
+    SDL_DestroyTexture(colorBufferTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
 
-/*Initializes the start conditions of the player*/
+/*Initializes the start conditions of the player and color buffer*/
 void setup() {
     // player starts at middle of rectangular screen
     player.x = WINDOW_WIDTH / 2;
@@ -99,7 +106,28 @@ void setup() {
     player.rotationAngle = PI / 2; //90 deg in radians
     player.walkSpeed = 100;
     player.turnSpeed = 45 * (PI / 180); //45 deg in radians
+
+    // allocate the total amount of bytes in memory to hold our colorbuffer
+    colorBuffer = (Uint32*)malloc(sizeof(Uint32) * WINDOW_WIDTH * WINDOW_HEIGHT);
+
+    // create an SDL_Texture to display the colorbuffer
+    colorBufferTexture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_ARGB8888, //A is alpha for transparency
+        SDL_TEXTUREACCESS_STREAMING,
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT
+    );
+
+    // manually create a blue texture with black pixels in every x & y multiples of 8
+    wallTexture = (Uint32*)malloc(sizeof(Uint32) * TEXTURE_WIDTH * TEXTURE_HEIGHT);
+    for (int x = 0; x < TEXTURE_WIDTH; x++) {
+        for (int y = 0; y < TEXTURE_HEIGHT; y++) {
+            wallTexture[TEXTURE_WIDTH * y + x] = (x % 8 && y % 8) ? 0xFF0000FF : 0xFF000000;
+        }
+    }
 }
+
 
 /* Tells if a cell has wall */
 int mapHasWallAt(float x, float y) {
@@ -232,11 +260,11 @@ void castRay(float rayAngle, int stripId) {
     float vertWallHitY = 0;
     int vertWallContent = 0;
 
-    // Find the x-coordinate of the closest horizontal grid intersection
+    // Find the x-coordinate of the closest vertical grid intersection
     xintercept = floor(player.x / TILE_SIZE) * TILE_SIZE;
     xintercept += isRayFacingRight ? TILE_SIZE : 0;
 
-    // Find the y-coordinate of the closest horizontal grid intersection
+    // Find the y-coordinate of the closest vertical grid intersection
     yintercept = player.y + (xintercept - player.x) * tan(rayAngle);
 
     // Calculate the increment xstep and ystep
@@ -407,10 +435,82 @@ void update() {
     castAllRays();
 }
 
+/* Generate 3d walls projection from rays coming from player */
+void generate3DProjection() {
+    for (int i = 0; i < NUM_RAYS; i++) {
+        // counter fishbowl effect using perpendicular wall distance
+        float perpDistance = rays[i].distance * cos(rays[i].rayAngle - player.rotationAngle);
+        float distanceProjPlane = (WINDOW_WIDTH / 2) / tan(FOV_ANGLE / 2);
+        float projectedWallHeight = (TILE_SIZE / perpDistance) * distanceProjPlane;
+
+        int wallStripHeight = (int)projectedWallHeight;
+
+        int wallTopPixel = (WINDOW_HEIGHT / 2) - (wallStripHeight / 2);
+        wallTopPixel = wallTopPixel < 0 ? 0 : wallTopPixel;
+
+        int wallBottomPixel = (WINDOW_HEIGHT / 2) + (wallStripHeight / 2);
+        wallBottomPixel = wallBottomPixel > WINDOW_HEIGHT ? WINDOW_HEIGHT : wallBottomPixel;
+
+        // set the color of the ceiling
+        for (int y = 0; y < wallTopPixel; y++)
+            colorBuffer[(WINDOW_WIDTH * y) + i] = 0xFF333333;
+
+        // calculate texture offset X
+        int textureOffsetX;
+        if (rays[i].wasHitVertical)
+            textureOffsetX = (int)rays[i].wallHitY % TEXTURE_HEIGHT;
+        else
+            textureOffsetX = (int)rays[i].wallHitX % TEXTURE_WIDTH;
+
+        // render the wall from wallTopPixel to wallBottomPixel
+        for (int y = wallTopPixel; y < wallBottomPixel; y++) {
+            // calculate texture offset Y
+            int distanceFromTop = y + (wallStripHeight / 2) - (WINDOW_HEIGHT / 2);
+            /*distanceFromTop == y - wallTopPixel when walls not clamping, but it can, so we set that above, to prevent distortion*/
+            int textureOffsetY = distanceFromTop * ((float)TEXTURE_HEIGHT / wallStripHeight);
+
+            // set the color of the wall based on the color from the texture
+            Uint32 texelColor = wallTexture[(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
+            colorBuffer[(WINDOW_WIDTH * y) + i] = texelColor;
+        }
+
+        // set the color of the floor
+        for (int y = wallBottomPixel; y < WINDOW_HEIGHT; y++)
+            colorBuffer[(WINDOW_WIDTH * y) + i] = 0xFF665577;
+    }
+}
+
+// Reset color buffer to color param for each cell
+void clearColorBuffer(Uint32 color) {
+    for (int x = 0; x < WINDOW_WIDTH; x++)
+        for (int y = 0; y < WINDOW_HEIGHT; y++)
+            // below is similar to 2d [y][x]
+            colorBuffer[(WINDOW_WIDTH * y) + x] = color;
+}
+
+// Render color buffer as per the color pixel values in array pointed to by colorBuffer
+void renderColorBuffer() {
+    SDL_UpdateTexture(
+        colorBufferTexture,
+        NULL,
+        colorBuffer,
+        (int)(WINDOW_WIDTH * sizeof(Uint32))
+    );
+    SDL_RenderCopy(renderer, colorBufferTexture, NULL, NULL);
+}
+
+
 /* Renders the screen*/
 void render() {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
+
+    generate3DProjection();
+
+    renderColorBuffer();
+
+    // set all color buffer values to black
+    clearColorBuffer(0xFF000000);
 
     renderMap();
     renderRays();
