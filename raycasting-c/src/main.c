@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <math.h>
 #include <limits.h>
 #include <SDL2/SDL.h>
@@ -9,9 +10,9 @@ SDL_Renderer* renderer = NULL;
 int isGameRunning = FALSE;
 int ticksLastFrame;
 
-Uint32* colorBuffer = NULL;
+uint32_t* colorBuffer = NULL;
 SDL_Texture* colorBufferTexture;
-Uint32* textures[NUM_TEXTURES];
+uint32_t* textures[NUM_TEXTURES];
 
 
 const int map[MAP_NUM_ROWS][MAP_NUM_COLS] = {
@@ -108,7 +109,7 @@ void setup() {
     player.turnSpeed = 45 * (PI / 180); //45 deg in radians
 
     // allocate the total amount of bytes in memory to hold our colorbuffer
-    colorBuffer = (Uint32*)malloc(sizeof(Uint32) * WINDOW_WIDTH * WINDOW_HEIGHT);
+    colorBuffer = (uint32_t*)malloc(sizeof(uint32_t) * WINDOW_WIDTH * WINDOW_HEIGHT);
 
     // create an SDL_Texture to display the colorbuffer
     colorBufferTexture = SDL_CreateTexture(
@@ -120,14 +121,14 @@ void setup() {
     );
 
     // load some textures from the textures.h
-    textures[0] = (Uint32*) REDBRICK_TEXTURE;
-    textures[1] = (Uint32*) PURPLESTONE_TEXTURE;
-    textures[2] = (Uint32*) MOSSYSTONE_TEXTURE;
-    textures[3] = (Uint32*) GRAYSTONE_TEXTURE;
-    textures[4] = (Uint32*) COLORSTONE_TEXTURE;
-    textures[5] = (Uint32*) BLUESTONE_TEXTURE;
-    textures[6] = (Uint32*) WOOD_TEXTURE;
-    textures[7] = (Uint32*) EAGLE_TEXTURE;
+    textures[0] = (uint32_t*) REDBRICK_TEXTURE;
+    textures[1] = (uint32_t*) PURPLESTONE_TEXTURE;
+    textures[2] = (uint32_t*) MOSSYSTONE_TEXTURE;
+    textures[3] = (uint32_t*) GRAYSTONE_TEXTURE;
+    textures[4] = (uint32_t*) COLORSTONE_TEXTURE;
+    textures[5] = (uint32_t*) BLUESTONE_TEXTURE;
+    textures[6] = (uint32_t*) WOOD_TEXTURE;
+    textures[7] = (uint32_t*) EAGLE_TEXTURE;
 }
 
 
@@ -473,7 +474,7 @@ void generate3DProjection() {
             int textureOffsetY = distanceFromTop * ((float)TEXTURE_HEIGHT / wallStripHeight);
 
             // set the color of the wall based on the color from the texture
-            Uint32 texelColor = textures[texNum][(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
+            uint32_t texelColor = textures[texNum][(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
             colorBuffer[(WINDOW_WIDTH * y) + i] = texelColor;
         }
 
@@ -484,7 +485,7 @@ void generate3DProjection() {
 }
 
 // Reset color buffer to color param for each cell
-void clearColorBuffer(Uint32 color) {
+void clearColorBuffer(uint32_t color) {
     for (int x = 0; x < WINDOW_WIDTH; x++)
         for (int y = 0; y < WINDOW_HEIGHT; y++)
             // below is similar to 2d [y][x]
@@ -497,7 +498,7 @@ void renderColorBuffer() {
         colorBufferTexture,
         NULL,
         colorBuffer,
-        (int)(WINDOW_WIDTH * sizeof(Uint32))
+        (int)(WINDOW_WIDTH * sizeof(uint32_t))
     );
     SDL_RenderCopy(renderer, colorBufferTexture, NULL, NULL);
 }
