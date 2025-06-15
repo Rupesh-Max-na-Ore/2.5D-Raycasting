@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include "constants.h"
 #include "textures.h"
+
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 int isGameRunning = FALSE;
@@ -85,8 +86,9 @@ int initializeWindow() {
     return TRUE;
 }
 
-/*Quits the game window*/
+/*After Quiting the game window, free memory*/
 void destroyWindow() {
+    freeWallTextures();
     free(colorBuffer);
     SDL_DestroyTexture(colorBufferTexture);
     SDL_DestroyRenderer(renderer);
@@ -114,21 +116,14 @@ void setup() {
     // create an SDL_Texture to display the colorbuffer
     colorBufferTexture = SDL_CreateTexture(
         renderer,
-        SDL_PIXELFORMAT_ARGB8888, //A is alpha for transparency
+        SDL_PIXELFORMAT_RGBA32, //A is alpha for transparency
         SDL_TEXTUREACCESS_STREAMING,
         WINDOW_WIDTH,
         WINDOW_HEIGHT
     );
 
-    // load some textures from the textures.h
-    textures[0] = (uint32_t*) REDBRICK_TEXTURE;
-    textures[1] = (uint32_t*) PURPLESTONE_TEXTURE;
-    textures[2] = (uint32_t*) MOSSYSTONE_TEXTURE;
-    textures[3] = (uint32_t*) GRAYSTONE_TEXTURE;
-    textures[4] = (uint32_t*) COLORSTONE_TEXTURE;
-    textures[5] = (uint32_t*) BLUESTONE_TEXTURE;
-    textures[6] = (uint32_t*) WOOD_TEXTURE;
-    textures[7] = (uint32_t*) EAGLE_TEXTURE;
+    // Ask uPNG library to decode all PNG files and loads the wallTextures array
+    loadWallTextures();
 }
 
 
@@ -176,8 +171,8 @@ void renderPlayer() {
         renderer,
         MINIMAP_SCALE_FACTOR * player.x,
         MINIMAP_SCALE_FACTOR * player.y,
-        MINIMAP_SCALE_FACTOR * (player.x + cos(player.rotationAngle) * 40),
-        MINIMAP_SCALE_FACTOR * (player.y + sin(player.rotationAngle) * 40)
+        MINIMAP_SCALE_FACTOR * player.x + cos(player.rotationAngle) * 40,
+        MINIMAP_SCALE_FACTOR * player.y + sin(player.rotationAngle) * 40
     );
 }
 
@@ -474,7 +469,7 @@ void generate3DProjection() {
             int textureOffsetY = distanceFromTop * ((float)TEXTURE_HEIGHT / wallStripHeight);
 
             // set the color of the wall based on the color from the texture
-            uint32_t texelColor = textures[texNum][(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
+            uint32_t texelColor = wallTextures[texNum].texture_buffer[(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
             colorBuffer[(WINDOW_WIDTH * y) + i] = texelColor;
         }
 
