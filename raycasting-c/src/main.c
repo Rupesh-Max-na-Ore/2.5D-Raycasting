@@ -323,14 +323,23 @@ void castRay(float rayAngle, int stripId) {
 }
 
 /* Cast each ray*/
-void castAllRays() {
-    //Start from the lowest angle ray, span upto fov angle
-    //i.e., angle of rays lie w/in rangle of [-fov/2, +fov/2] wrt player rotation angle
-    float rayAngle = player.rotationAngle - (FOV_ANGLE / 2);
+// void castAllRays() {
+//     //Start from the lowest angle ray, span upto fov angle
+//     //i.e., angle of rays lie w/in rangle of [-fov/2, +fov/2] wrt player rotation angle
+//     float rayAngle = player.rotationAngle - (FOV_ANGLE / 2);
 
-    for (int stripId = 0; stripId < NUM_RAYS; stripId++) {
-        castRay(rayAngle, stripId);
-        rayAngle += FOV_ANGLE / NUM_RAYS; //angle of next ray
+//     for (int stripId = 0; stripId < NUM_RAYS; stripId++) {
+//         castRay(rayAngle, stripId);
+//         rayAngle += FOV_ANGLE / NUM_RAYS; //angle of next ray
+//     }
+// }
+/* Corrected to fix curvy wall distortion, 
+fixing ray distance intervals from wall,
+then computing angle for that interval using trigonometry */
+void castAllRays() {
+    for (int col = 0; col < NUM_RAYS; col++) {
+        float rayAngle = player.rotationAngle + atan((col - NUM_RAYS/2) / DIST_PROJ_PLANE);
+        castRay(rayAngle, col);
     }
 }
 
@@ -438,8 +447,9 @@ void generate3DProjection() {
     for (int i = 0; i < NUM_RAYS; i++) {
         // counter fishbowl effect using perpendicular wall distance
         float perpDistance = rays[i].distance * cos(rays[i].rayAngle - player.rotationAngle);
-        float distanceProjPlane = (WINDOW_WIDTH / 2) / tan(FOV_ANGLE / 2);
-        float projectedWallHeight = (TILE_SIZE / perpDistance) * distanceProjPlane;
+        //float distanceProjPlane = (WINDOW_WIDTH / 2) / tan(FOV_ANGLE / 2);
+        //float projectedWallHeight = (TILE_SIZE / perpDistance) * distanceProjPlane;
+        float projectedWallHeight = (TILE_SIZE / perpDistance) * DIST_PROJ_PLANE;
 
         int wallStripHeight = (int)projectedWallHeight;
 
@@ -453,6 +463,7 @@ void generate3DProjection() {
         for (int y = 0; y < wallTopPixel; y++)
             colorBuffer[(WINDOW_WIDTH * y) + i] = 0xFF333333;
 
+        
         // calculate texture offset X
         int textureOffsetX;
         if (rays[i].wasHitVertical)
@@ -463,13 +474,16 @@ void generate3DProjection() {
         // get the correct texture id number from the map content
         int texNum = rays[i].wallHitContent - 1;
 
+        int texture_width = wallTextures[texNum].width;
+        int texture_height = wallTextures[texNum].height;
+
         // render the wall from wallTopPixel to wallBottomPixel
         for (int y = wallTopPixel; y < wallBottomPixel; y++) {
             int distanceFromTop = y + (wallStripHeight / 2) - (WINDOW_HEIGHT / 2);
-            int textureOffsetY = distanceFromTop * ((float)TEXTURE_HEIGHT / wallStripHeight);
+            int textureOffsetY = distanceFromTop * ((float)texture_height / wallStripHeight);
 
             // set the color of the wall based on the color from the texture
-            uint32_t texelColor = wallTextures[texNum].texture_buffer[(TEXTURE_WIDTH * textureOffsetY) + textureOffsetX];
+            uint32_t texelColor = wallTextures[texNum].texture_buffer[(texture_width * textureOffsetY) + textureOffsetX];
             colorBuffer[(WINDOW_WIDTH * y) + i] = texelColor;
         }
 

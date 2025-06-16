@@ -21,5 +21,7 @@
 
 #define NUM_RAYS WINDOW_WIDTH
 
+#define DIST_PROJ_PLANE ((WINDOW_WIDTH / 2) / tan(FOV_ANGLE / 2))
+
 #define FPS 30
 #define FRAME_TIME_LENGTH (1000 / FPS)
