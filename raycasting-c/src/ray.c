@@ -3,12 +3,11 @@
 ray_t rays[NUM_RAYS];
 
 // Normalize incresing angle to b/w [0,2pi] radians
-float normalizeAngle(float angle) {
-    angle = remainder(angle, TWO_PI);
-    if (angle < 0) {
-        angle = TWO_PI + angle;
+void normalizeAngle(float* angle) {
+    *angle = remainder(*angle, TWO_PI);
+    if (*angle < 0) {
+        *angle = TWO_PI + *angle;
     }
-    return angle;
 }
 
 // To Find Euclidean Distance
@@ -19,7 +18,7 @@ float distanceBetweenPoints(float x1, float y1, float x2, float y2) {
 
 /* Cast a ray upto point of nearest collision with obstacle or boundary*/
 void castRay(float rayAngle, int stripId) {
-    rayAngle = normalizeAngle(rayAngle);
+    normalizeAngle(&rayAngle);
     
     int isRayFacingDown = rayAngle > 0 && rayAngle < PI;
     int isRayFacingUp = !isRayFacingDown;

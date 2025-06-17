@@ -1,5 +1,16 @@
 #include "wall.h"
 
+// Change the color intensity based on a factor value between 0 and 1
+void changeColorIntensity(color_t* color, float factor) {
+    // use bit mask to extract r,g,b parts of colour and scale down, then combin back
+    color_t a = (*color & 0xFF000000);
+    color_t r = (*color & 0x00FF0000) * factor;
+    color_t g = (*color & 0x0000FF00) * factor;
+    color_t b = (*color & 0x000000FF) * factor;
+
+    *color = a | (r & 0x00FF0000) | (g & 0x0000FF00) | (b & 0x000000FF);
+}
+
 /* Generate 3d walls projection from rays coming from player */
 void renderWallProjection(void) {
     for (int x = 0; x < NUM_RAYS; x++) {
@@ -40,8 +51,16 @@ void renderWallProjection(void) {
 
             // set the color of the wall based on the color from the texture
             color_t texelColor = wallTextures[texNum].texture_buffer[(texture_width * textureOffsetY) + textureOffsetX];
+            
+            // Shadow effect
+            // Make the pixel color darker if the ray hit was vertical
+            if (rays[x].wasHitVertical) {
+                changeColorIntensity(&texelColor, 0.7);
+            }
+            
             drawPixel(x, y, texelColor);
         }
+
 
         // set the color of the floor
         for (int y = wallBottomPixel; y < WINDOW_HEIGHT; y++)
