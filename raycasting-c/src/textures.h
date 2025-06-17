@@ -18,7 +18,7 @@ extern texture_t wallTextures[NUM_TEXTURES];
 but it’s defined elsewhere," so no multiple definitions occur 
 during linking. You define it once in a .c file to allocate memory for it.*/
 
-void loadWallTextures();
-void freeWallTextures();
+void loadWallTextures(void);
+void freeWallTextures(void);
 
 #endif
