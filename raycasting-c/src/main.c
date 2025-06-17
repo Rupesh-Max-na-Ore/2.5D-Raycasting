@@ -4,16 +4,13 @@
 #include <stdbool.h>
 #include <limits.h>
 #include <SDL2/SDL.h>
-#include "constants.h"
+#include "defs.h"
 #include "textures.h"
+#include "graphics.h"
 
-SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
 int isGameRunning = false;
 int ticksLastFrame;
 
-uint32_t* colorBuffer = NULL;
-SDL_Texture* colorBufferTexture;
 uint32_t* textures[NUM_TEXTURES];
 
 
@@ -55,52 +52,10 @@ struct Ray {
 } rays[NUM_RAYS];
 
 
-/*Initializes the window screen where game is going run*/
-bool initializeWindow() {
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-        fprintf(stderr, "Error initializing SDL.\n");
-        return false;
-    }
-    /*Get current resolution of display, 
-    scale and stretch to resolution we want*/
-    SDL_DisplayMode display_mode;
-    SDL_GetCurrentDisplayMode(0, &display_mode);
-    int fullScreenWidth = display_mode.w;
-    int fullScreenHeight = display_mode.h;
-    window = SDL_CreateWindow(
-        NULL,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        fullScreenWidth,
-        fullScreenHeight,
-        SDL_WINDOW_BORDERLESS
-    );
-    if (!window) {
-        fprintf(stderr, "Error creating SDL window.\n");
-        return false;
-    }
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if (!renderer) {
-        fprintf(stderr, "Error creating SDL renderer.\n");
-        return false;
-    }
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-    return true;
-}
-
-/*After Quiting the game window, free memory*/
-void destroyWindow() {
-    freeWallTextures();
-    free(colorBuffer);
-    SDL_DestroyTexture(colorBufferTexture);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-}
 
 /*Initializes the start conditions of the player and color buffer*/
-void setup() {
+void setup(void) {
     // player starts at middle of rectangular screen
     player.x = WINDOW_WIDTH / 2;
     player.y = WINDOW_HEIGHT / 2;
@@ -112,18 +67,6 @@ void setup() {
     player.rotationAngle = PI / 2; //90 deg in radians
     player.walkSpeed = 100;
     player.turnSpeed = 45 * (PI / 180); //45 deg in radians
-
-    // allocate the total amount of bytes in memory to hold our colorbuffer
-    colorBuffer = (uint32_t*)malloc(sizeof(uint32_t) * WINDOW_WIDTH * WINDOW_HEIGHT);
-
-    // create an SDL_Texture to display the colorbuffer
-    colorBufferTexture = SDL_CreateTexture(
-        renderer,
-        SDL_PIXELFORMAT_RGBA32, //A is alpha for transparency
-        SDL_TEXTUREACCESS_STREAMING,
-        WINDOW_WIDTH,
-        WINDOW_HEIGHT
-    );
 
     // Ask uPNG library to decode all PNG files and loads the wallTextures array
     loadWallTextures();
@@ -160,7 +103,8 @@ void movePlayer(float deltaTime) {
 }
 
 /* reders player on screen as a small rectangle */
-void renderPlayer() {
+void renderPlayer(void) {
+    /*
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect playerRect = {
         player.x * MINIMAP_SCALE_FACTOR,
@@ -177,6 +121,7 @@ void renderPlayer() {
         MINIMAP_SCALE_FACTOR * player.x + cos(player.rotationAngle) * 40,
         MINIMAP_SCALE_FACTOR * player.y + sin(player.rotationAngle) * 40
     );
+    */
 }
 
 // Normalize incresing angle to b/w [0,2pi] radians
@@ -336,7 +281,7 @@ void castRay(float rayAngle, int stripId) {
 /* Corrected to fix curvy wall distortion, 
 fixing ray distance intervals from wall,
 then computing angle for that interval using trigonometry */
-void castAllRays() {
+void castAllRays(void) {
     for (int col = 0; col < NUM_RAYS; col++) {
         float rayAngle = player.rotationAngle + atan((col - NUM_RAYS/2) / DIST_PROJ_PLANE);
         castRay(rayAngle, col);
@@ -345,7 +290,8 @@ void castAllRays() {
 
 /* Renders the map with obstacles according to 
 cell values in map matrix */
-void renderMap() {
+void renderMap(void) {
+    /*
     // for each tile
     for (int i = 0; i < MAP_NUM_ROWS; i++) {
         for (int j = 0; j < MAP_NUM_COLS; j++) {
@@ -364,10 +310,12 @@ void renderMap() {
             SDL_RenderFillRect(renderer, &mapTileRect);
         }
     }
+    */
 }
 
 /* Reders all Rays coming out of Player*/
-void renderRays() {
+void renderRays(void) {
+    /*
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     for (int i = 0; i < NUM_RAYS; i++) {
         SDL_RenderDrawLine(
@@ -378,10 +326,11 @@ void renderRays() {
             MINIMAP_SCALE_FACTOR * rays[i].wallHitY
         );
     }
+    */
 }
 
 /*Listens and Checks user input */
-void processInput() {
+void processInput(void) {
     SDL_Event event;
     SDL_PollEvent(&event);
     switch (event.type) {
@@ -417,7 +366,7 @@ void processInput() {
 }
 
 /*updates the image on game screen frame by frame, as per p;ayer input*/
-void update() {
+void update(void) {
     // Compute how long we have until the reach the target frame time in milliseconds
     int timeToWait = FRAME_TIME_LENGTH - (SDL_GetTicks() - ticksLastFrame);
 
@@ -443,7 +392,7 @@ void update() {
 }
 
 /* Generate 3d walls projection from rays coming from player */
-void generate3DProjection() {
+void renderWallProjection(void) {
     for (int x = 0; x < NUM_RAYS; x++) {
         // counter fishbowl effect using perpendicular wall distance
         float perpDistance = rays[x].distance * cos(rays[x].rayAngle - player.rotationAngle);
@@ -459,7 +408,7 @@ void generate3DProjection() {
 
         // set the color of the ceiling
         for (int y = 0; y < wallTopPixel; y++)
-            colorBuffer[(WINDOW_WIDTH * y) + x] = 0xFF333333;
+            drawPixel(x, y, 0xFF444444);
 
         
         // calculate texture offset X
@@ -482,50 +431,35 @@ void generate3DProjection() {
 
             // set the color of the wall based on the color from the texture
             uint32_t texelColor = wallTextures[texNum].texture_buffer[(texture_width * textureOffsetY) + textureOffsetX];
-            colorBuffer[(WINDOW_WIDTH * y) + x] = texelColor;
+            drawPixel(x, y, texelColor);
         }
 
         // set the color of the floor
         for (int y = wallBottomPixel; y < WINDOW_HEIGHT; y++)
-            colorBuffer[(WINDOW_WIDTH * y) + x] = 0xFF665577;
+            drawPixel(x, y, 0xFF888888);
     }
 }
 
-// Reset color buffer to color param for each cell
-void clearColorBuffer(uint32_t color) {
-    for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT; i++)
-        colorBuffer[i] = color;
-}
-
-// Render color buffer as per the color pixel values in array pointed to by colorBuffer
-void renderColorBuffer() {
-    SDL_UpdateTexture(
-        colorBufferTexture,
-        NULL,
-        colorBuffer,
-        (int)(WINDOW_WIDTH * sizeof(uint32_t))
-    );
-    SDL_RenderCopy(renderer, colorBufferTexture, NULL, NULL);
-}
 
 
 /* Renders the screen*/
-void render() {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    generate3DProjection();
-
-    renderColorBuffer();
+void render(void) {
 
     // set all color buffer values to black
     clearColorBuffer(0xFF000000);
 
-    renderMap();
-    renderRays();
-    renderPlayer();
+    // render 3D wall Projection
+    renderWallProjection();
+    // renderMap();
+    // renderRays();
+    // renderPlayer();
 
-    SDL_RenderPresent(renderer);
+    renderColorBuffer();
+}
+
+void releaseResources(void) {
+    freeWallTextures();
+    destroyWindow();
 }
 
 // Driver function
