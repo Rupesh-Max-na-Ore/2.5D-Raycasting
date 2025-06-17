@@ -94,7 +94,7 @@ void drawRect(int x, int y, int width, int height, uint32_t color) {
     }
 }
 
-/* DDL Alorithm to draw lines */
+/* DDA Line Algorithm to draw lines */
 void drawLine(int x0, int y0, int x1, int y1, uint32_t color) {
     int deltaX = (x1 - x0);
     int deltaY = (y1 - y0);
