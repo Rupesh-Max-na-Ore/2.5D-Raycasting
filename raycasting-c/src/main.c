@@ -448,12 +448,16 @@ void render(void) {
     // set all color buffer values to black
     clearColorBuffer(0xFF000000);
 
+
     // render 3D wall Projection
     renderWallProjection();
+
+    // testing draw rectangle funct.
+    drawRect(100, 200, 500, 300, 0xFFFFFFFF);
+
     // renderMap();
     // renderRays();
     // renderPlayer();
-
     renderColorBuffer();
 }
 
