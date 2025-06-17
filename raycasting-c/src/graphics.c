@@ -3,7 +3,7 @@
 // Declare as static to make sure only this file's code can modify below variables
 static SDL_Window* window = NULL;
 static SDL_Renderer* renderer = NULL;
-static uint32_t* colorBuffer = NULL;
+static color_t* colorBuffer = NULL;
 static SDL_Texture* colorBufferTexture;
 
 /*Initializes the window screen where game is going run*/
@@ -38,7 +38,7 @@ bool initializeWindow() {
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     // allocate the total amount of bytes in memory to hold our colorbuffer
-    colorBuffer = (uint32_t*)malloc(sizeof(uint32_t) * WINDOW_WIDTH * WINDOW_HEIGHT);
+    colorBuffer = (color_t*)malloc(sizeof(color_t) * WINDOW_WIDTH * WINDOW_HEIGHT);
 
     // create an SDL_Texture to display the colorbuffer
     colorBufferTexture = SDL_CreateTexture(
@@ -62,7 +62,7 @@ void destroyWindow() {
 }
 
 // Reset color buffer to color param for each cell
-void clearColorBuffer(uint32_t color) {
+void clearColorBuffer(color_t color) {
     for (int i = 0; i < WINDOW_WIDTH * WINDOW_HEIGHT; i++)
         colorBuffer[i] = color;
 }
@@ -73,20 +73,20 @@ void renderColorBuffer() {
         colorBufferTexture,
         NULL,
         colorBuffer,
-        (int)(WINDOW_WIDTH * sizeof(uint32_t))
+        (int)(WINDOW_WIDTH * sizeof(color_t))
     );
     SDL_RenderCopy(renderer, colorBufferTexture, NULL, NULL);
     SDL_RenderPresent(renderer);
 }
 
 
-void drawPixel(int x, int y, uint32_t color) {
+void drawPixel(int x, int y, color_t color) {
     colorBuffer[(WINDOW_WIDTH * y) + x] = color;
 }
 
 // Draws a rectangle from (x,y) coord of screen
 // of size width x height, of colour = color
-void drawRect(int x, int y, int width, int height, uint32_t color) {
+void drawRect(int x, int y, int width, int height, color_t color) {
     for (int i = x; i <= (x + width); i++) {
         for (int j = y; j <= (y + height); j++) {
             drawPixel(i, j, color);
@@ -95,7 +95,7 @@ void drawRect(int x, int y, int width, int height, uint32_t color) {
 }
 
 /* DDA Line Algorithm to draw lines */
-void drawLine(int x0, int y0, int x1, int y1, uint32_t color) {
+void drawLine(int x0, int y0, int x1, int y1, color_t color) {
     int deltaX = (x1 - x0);
     int deltaY = (y1 - y0);
 
